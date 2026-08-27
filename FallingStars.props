@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!--
+    FallingStars project-wide properties.
+    Imported by FallingStars.vcxproj. Keep this file toolchain-agnostic so the
+    same settings apply to Debug and Release configurations.
+  -->
+
+  <PropertyGroup>
+    <!-- Repo root = directory of this .props file. -->
+    <FallingStarsDir Condition=" '$(FallingStarsDir)' == '' ">$(MSBuildThisFileDirectory)</FallingStarsDir>
+
+    <!-- Build stamp, overridable from the build scripts:
+         msbuild ... /p:GitCommit=abc123 /p:GitBranch=develop -->
+    <GitCommit Condition=" '$(GitCommit)' == '' ">dev</GitCommit>
+    <GitBranch Condition=" '$(GitBranch)' == '' ">local</GitBranch>
+  </PropertyGroup>
+
+  <!-- Pull in the YRpp submodule (game type headers + Syringe.h + StaticInits.cpp). -->
+  <Import Project="$(FallingStarsDir)YRpp\YRpp.props" />
+
+  <PropertyGroup>
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <!--
+      IMPORTANT: must be "x86", NOT "Win32".
+      MSBuild maps the Win32 platform to PlatformTarget=x86 via
+      Platforms\Win32\Platform.Default.props; overriding it to "Win32" makes
+      Microsoft.Cpp.WindowsSDK.targets look for Lib\...\um\Win32\gdi32.lib
+      (which does not exist - the folder is "x86") and fail with MSB8037.
+    -->
+    <PlatformTarget>x86</PlatformTarget>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>false</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <!--
+        IMPORTANT: we APPEND to the include search path via AdditionalIncludeDirectories.
+        We never overwrite $(IncludePath) - doing so drops $(WindowsSDK_IncludePath)
+        and breaks <windows.h> (the classic C2447 bug). The standard VC/C++ targets
+        already prepend $(VC_IncludePath);$(WindowsSDK_IncludePath);$(IncludePath).
+      -->
+      <AdditionalIncludeDirectories>$(FallingStarsDir)src;$(FallingStarsDir)YRpp;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+
+      <LanguageStandard>stdcpp20</LanguageStandard>
+      <LanguageStandard_C>stdc17</LanguageStandard_C>
+
+      <!--
+        IMPORTANT: force UTF-8 source parsing. Chinese comments / string
+        literals in .cpp files are stored as UTF-8; without /utf-8 MSVC would
+        decode them with the local ANSI code page and produce garbled text or
+        C2001/C2143 errors.
+      -->
+      <AdditionalOptions>/utf-8 %(AdditionalOptions)</AdditionalOptions>
+
+      <!-- Game injection DLL: no exceptions, no RTTI. -->
+      <ExceptionHandling>false</ExceptionHandling>
+      <RuntimeTypeInfo>false</RuntimeTypeInfo>
+
+      <WarningLevel>Level3</WarningLevel>
+      <TreatWarningAsErrors>false</TreatWarningAsErrors>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+      <Optimization>Disabled</Optimization>
+      <BasicRuntimeChecks>Default</BasicRuntimeChecks>
+      <MinimalRebuild>false</MinimalRebuild>
+      <!--
+        MultiProcessorCompilation (/MP) disabled: 6 TUs each include the full
+        YRpp with C++20 + /Zi + /Od + Debug CRT (STL iterator debug). Parallel
+        cl.exe processes can exhaust the compiler heap on memory-constrained
+        machines (MSVC C1060 in ctype.h). Serial compilation keeps peak memory
+        to a single TU; build time is still well under a minute.
+      -->
+      <MultiProcessorCompilation>false</MultiProcessorCompilation>
+      <ShowIncludes>false</ShowIncludes>
+    </ClCompile>
+
+    <Link>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <SubSystem>Windows</SubSystem>
+      <TargetMachine>MachineX86</TargetMachine>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <NoEntryPoint>false</NoEntryPoint>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!--
+    Per-configuration settings, mirroring the standard VS templates:
+    - Debug  : _DEBUG defined, static DEBUG CRT (/MTd, MultiThreadedDebug).
+              IMPORTANT: _DEBUG activates CRT assertions / STL iterator debug
+              (_Adl_verify_range etc.) which reference __CrtDbgReport from
+              libcmtd.lib; linking the release CRT (/MT) instead yields
+              LNK2001/LNK2019 __CrtDbgReport. Debug MUST use /MTd.
+    - Release: NDEBUG defined, static release CRT (/MT, MultiThreaded).
+    SyringeEx requires SYR_VER=2 for the new handshake / feature flags.
+    (In MSBuild a later metadata definition with the same name wins, so these
+    config-conditional groups must live OUTSIDE the common group above.)
+  -->
+  <ItemDefinitionGroup Condition="'$(Configuration)' == 'Debug'">
+    <ClCompile>
+      <PreprocessorDefinitions>_DEBUG;SYR_VER=2;WIN32;_WINDOWS;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;FALLINGSTARS_GIT_COMMIT="$(GitCommit)";FALLINGSTARS_GIT_BRANCH="$(GitBranch)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <ItemDefinitionGroup Condition="'$(Configuration)' != 'Debug'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;SYR_VER=2;WIN32;_WINDOWS;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;FALLINGSTARS_GIT_COMMIT="$(GitCommit)";FALLINGSTARS_GIT_BRANCH="$(GitBranch)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+  <!--
+    Stable configuration (稳定应用版). Must live after the two groups above
+    (later metadata definitions win, MSBuild).
+    - Release-style: NDEBUG + static release CRT (/MT).
+    - Defines FS_STABLE, which in code compiles FS_LOG out entirely
+      (src/Core/Logging.h) and strips the debug gate dialog / injection banner
+      (src/Hooks/DebugNotice.cpp is guarded by _DEBUG && !FS_STABLE).
+    - The only log output is the single "欢迎使用FallingstarsEX" line written
+      by the ExeRun entry hook (src/FallingStars.cpp).
+    Invoked by scripts/build_stable.bat (builds FallingStars.vcxproj directly
+    with /p:Configuration=Stable; the .sln has no Stable mapping).
+  -->
+  <ItemDefinitionGroup Condition="'$(Configuration)' == 'Stable'">
+    <ClCompile>
+      <PreprocessorDefinitions>NDEBUG;SYR_VER=2;WIN32;_WINDOWS;NOMINMAX;_CRT_SECURE_NO_WARNINGS;_CRT_NONSTDC_NO_WARNINGS;FS_STABLE;FALLINGSTARS_GIT_COMMIT="$(GitCommit)";FALLINGSTARS_GIT_BRANCH="$(GitBranch)";%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
+    </ClCompile>
+  </ItemDefinitionGroup>
+
+</Project>

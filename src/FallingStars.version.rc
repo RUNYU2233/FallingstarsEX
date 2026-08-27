@@ -1,0 +1,38 @@
+// ===========================================================================
+//  FallingStarsEX version resource - STABLE build only.
+//  Compiled by rc.exe only when Configuration == Stable (see vcxproj).
+//  The version "EXs.0.1" is embedded inside the DLL (VERSIONINFO resource,
+//  visible in the file's Properties dialog / resource table) but is NEVER
+//  shown in-game and never written to FallingStars.log - the stable build's
+//  log contains only the single welcome line.
+//  All strings are ASCII on purpose (no .rc encoding pitfalls with Chinese).
+// ===========================================================================
+
+#include <windows.h>
+
+VS_VERSION_INFO VERSIONINFO
+ FILEVERSION     0,1,0,0
+ PRODUCTVERSION  0,1,0,0
+ FILEFLAGSMASK   0x3fL
+ FILEFLAGS       0x0L
+ FILEOS          VOS_NT_WINDOWS32
+ FILETYPE        VFT_DLL
+ FILESUBTYPE     VFT2_UNKNOWN
+BEGIN
+    BLOCK "StringFileInfo"
+    BEGIN
+        BLOCK "040904b0"
+        BEGIN
+            VALUE "FileDescription",  "FallingStarsEX stable build"
+            VALUE "FileVersion",      "EXs.0.1"
+            VALUE "InternalName",     "FallingStars"
+            VALUE "OriginalFilename", "FallingStars.dll"
+            VALUE "ProductName",      "FallingStarsEX"
+            VALUE "ProductVersion",   "EXs.0.1"
+        END
+    END
+    BLOCK "VarFileInfo"
+    BEGIN
+        VALUE "Translation", 0x0409, 1200
+    END
+END

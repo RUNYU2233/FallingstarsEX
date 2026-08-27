@@ -168,7 +168,7 @@ the Free Software Foundation, either version 3 of the License, or
 
 👥 作者与感谢名单
 
-· 项目发起者 & 第一作者 ：RUNYU2233
+· 项目发起者 & 第一作者 ：RUNYU2233   
 · 技术指导 & 协助开发 ：GreyVacuum [https://github.com/GreyVacuum]
 
 ```

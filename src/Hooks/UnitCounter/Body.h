@@ -23,10 +23,11 @@ namespace FS
 	//   - 超级武器倒计时等右下角底部文本由 Hook 4 自动上移让位
 	//     （0x4A61C0 坐标过滤：Y 在屏幕底部 130px 内的文本上移 N*18px）。
 	//
-	// 地图 [Actions] 段参数布局（每动作 8 字段：ID, P1..P7）：
-//   520：P1=统计目标, P2=显示文本(CSF条目名), P3=单位种类, P4=指定所属方
-//   521：P1=统计目标, P2=显示文本(CSF条目名), P3=指定所属方, P4=科技类型索引
-//         （P4 = 该科技在 TechnoTypeClass::Array 中的序号，用于统计该科技类型单位）
+	// 地图 [Actions] 段参数布局（FA2 显示栏 = P1..P5，引擎强制文本模式）：
+//   520：P2=显示文本(CSF条目名), P3=统计目标, P4=指定所属方, P5=单位种类
+//   521：P2=显示文本(CSF条目名), P3=统计目标, P4=指定所属方, P5=科技类型索引
+//         （P5 = 该科技在 TechnoTypeClass::Array 中的序号，用于统计该科技类型单位）
+//   两动作布局统一：P4=所属方下拉、P5=种类/科技；P1 为模式位不配置。
 //   数量为 0 的计数器自动消除并【锁存隐藏】：即使单位重新出现也不再绘制，
 //   只有触发器再次触发才会恢复显示。
 //
@@ -55,7 +56,7 @@ namespace FS
 			CountTarget_Self = 4        // 仅触发所属方自身（事件 607/608/609：所属方由触发器决定，无需配置）
 		};
 
-		/// <summary>统计的单位种类（对应动作 520 的 P3）。</summary>
+		/// <summary>统计的单位种类（对应动作 520 的 P5）。</summary>
 		enum CountCategory : int
 		{
 			Category_All = 0,       // 全部单位
@@ -72,12 +73,12 @@ namespace FS
 		HouseClass* Owner = nullptr;     // 触发所属方（仅该方玩家可见）
 		int Kind = Action_CountByCategory; // 动作类型（520 或 521）
 		char Text[0x20] = { 0 };         // P2 字符串：520/521 共用的自定义显示文本（CSF 条目名）
-		int Target = CountTarget_Enemy;  // 统计目标（P1）
+		int Target = CountTarget_Enemy;  // 统计目标（P3）
 		int RawTarget = 0;               // FA2 原始统计目标编号（0敌方/1己方/2同盟/3全部/4指定所属方）
 		                                 // 预留：当前文字颜色按所属方(Owner)显示，此字段暂未参与配色
-		int Category = Category_All;     // 单位种类（520 的 P3）
-		int SpecifiedHouseIdx = -1;      // 统计目标为「指定所属方」时的所属方索引（520 的 P4 / 521 的 P3）
-		int TechnoTypeIndex = -1;        // 521 统计的科技类型在 TechnoTypeClass::Array 中的序号（P4）
+		int Category = Category_All;     // 单位种类（520 的 P5）
+		int SpecifiedHouseIdx = -1;      // 统计目标为「指定所属方」时的所属方索引（520/521 的 P4）
+		int TechnoTypeIndex = -1;        // 521 统计的科技类型在 TechnoTypeClass::Array 中的序号（P5）
 		bool Defunct = false;            // 锁存隐藏：统计数量曾归零后永久不绘制（不占行位），
 		                                 // 仅当触发器再次触发（HandleAction 覆盖更新）时才恢复
 		};

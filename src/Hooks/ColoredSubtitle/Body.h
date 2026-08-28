@@ -24,10 +24,15 @@ namespace FS
 	//   → "警告！"红、"小心"浅灰、"危险"浅蓝、"任务完成"白色。
 	//   括号本身（()<>[] 及全角）永不绘制。
 	//
-	// 提示音：字幕【出现】时播放与触发结果 11（文本触发事件）相同的提示音
-	// （原版 MessageListClass::AddMessage 在 SinglePlayer=false 时播放
-	// [RulesClass+0x6AC] 指定的声音 = rulesmo.ini IncomingMessage=MessageText，
-	// 本模块原样复刻）。每个 526 动作登记一次播放一次（触发自毁不重复）。
+	// 音效（与触发结果 11 文本触发事件完全一致，运行时动态解析，全 mod 通用）：
+	//   ① 字幕登记时播一声提示音：[RulesClass+0x6AC] = IncomingMessage
+	//      = MessageText（YR rules.ini 原版定义，各 mod 的 sound.ini 对应编号，
+	//      音频 umessage）
+	//   ② 打字机逐字揭示时播打字音：[RulesClass+0x6C4] = MessageCharTyped
+	//      = TextBleep（原版 rulesmd.ini "typing" effect，各 mod 的 sound.ini
+	//      对应编号，音频 utext）——事件 11 听感主体。
+	//   两者引擎均自带越界保护（PlayGlobal 0x75093D jge），任何 mod 缺键也安全。
+	//   每个 526 动作登记一次播放一次（触发自毁不重复）。
 	//
 	// 颜色渲染：内置 43 色【字面 RGB 色表】（按颜色名含义直接对照标准 RGB，
 	// 不做任何 HSV/引擎转换）。若要微调某个颜色，改 Body.cpp s_stdColors 表。

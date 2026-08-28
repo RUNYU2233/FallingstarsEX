@@ -364,7 +364,7 @@ namespace FS
 		// 3) 逐行向上堆叠：order 从 0 开始，第 0 行贴着命令栏之上，
 		//    其余依次上移，互不重叠。
 		const int lineHeight = 20;
-		RectangleStruct dim = Drawing::GetTextDimensions(buffer, { 0, 0 }, 0, 2, 0);
+		RectangleStruct dim = Drawing::GetTextDimensions(buffer, { 0, 0 }, 0, 0, 0);
 		int posX = rightEdge - dim.Width;
 		if (posX < 0) posX = 0;
 		int posY = baseY - order * lineHeight;
@@ -412,7 +412,7 @@ namespace FS
 				{
 				wchar_t text[96] = { 0 };
 				swprintf(text, 96, L"FallingStars v0.1a");
-					RectangleStruct dim = Drawing::GetTextDimensions(text, { 0, 0 }, 0, 2, 0);
+					RectangleStruct dim = Drawing::GetTextDimensions(text, { 0, 0 }, 0, 0, 0);
 					// 左下角（避开右上角 Phobos 版本号的区域），并抬高到命令栏之上
 					RectangleStruct bg = { 10, screenH - dim.Height - 72, dim.Width + 10, dim.Height + 10 };
 					pSurface->FillRect(&bg, COLOR_BLACK);
@@ -523,7 +523,7 @@ namespace FS
 		//
 		// 从运行时已加载的 TEventClass 读取 607/608/609 的 2 个参数（惰性，由求值 hook 调用）。
 		// 两个参数都是类型码 6 的数值，引擎按通用事件路径加载：
-		//   P1（单位种类）→ Value：0全部/1载具/2步兵/3飞行器/4建筑/5海军（同动作 520 的 CountCategory）
+		//   P1（单位种类）→ Value：0全部/1载具/2步兵/3飞行器/4舰船/5建筑（同动作 520 的 CountCategory，直接映射 Category 枚举）
 		//   P2（比较数值 N）→ String（十进制数字串，atoi 得到 N）
 		// 所属方：直接用触发器的所属方（pHouse，来自 HasOccured 调用方），不另行配置。
 		static CountCondition BuildConditionFromEvent(TEventClass* pEvent, HouseClass* pHouse)
@@ -619,11 +619,12 @@ namespace FS
 		}
 			else
 			{
-				// 520：P3=统计目标, P4=单位种类, P5=指定所属方（→Param3/Param4/Param5）
+				// 520：P3=统计目标, P4=指定所属方, P5=单位种类（→Param3/Param4/Param5）
+				//   ★ 布局与 521 统一：P4=所属方下拉、P5=种类/科技（FA2 类型码 0,13,6,2,6）
 				entry.RawTarget = pAction->Param3; // FA2 原始编号，预留
 				entry.Target = MapCountTarget(pAction->Param3);
-				entry.Category = pAction->Param4;
-				entry.SpecifiedHouseIdx = pAction->Param5;
+				entry.SpecifiedHouseIdx = pAction->Param4;
+				entry.Category = pAction->Param5;
 			}
 
 			// 参数合法性兜底：未配置 / 越界时回退默认值，保证不崩溃

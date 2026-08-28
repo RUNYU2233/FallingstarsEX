@@ -160,10 +160,11 @@ namespace FS
 			Entries.push_back(entry);
 
 			// 播放与触发结果 11（文本触发事件）完全相同的提示音：
-			//   原版 MessageListClass::AddMessage（0x5D3BA0）在 SinglePlayer=false
-			//   时播放 [RulesClass+0x6AC] 指定的声音（= rulesmo.ini IncomingMessage=
-			//   MessageText，soundmo.ini 2067）。此处原样复刻：同一声音索引、
-			//   panning=0x2000、volume=1.0f，听感与动作 11 一致。
+			//   原版 MessageListClass::AddMessage（0x5D3BA0）在调用方要求提示音
+			//   （参数7=0）时播放 [RulesClass+0x6AC] 指定的声音（YR rules.ini
+			//   IncomingMessage=MessageText 对应的音效，具体编号随各 mod 的
+			//   sound.ini 而定）。此处原样复刻：同一声音索引、panning=0x2000、
+			//   volume=1.0f，听感与动作 11 一致。
 			//   ★ 每次登记都播放（触发一次响一次）。
 			if (RulesClass::Instance)
 			{
@@ -242,7 +243,20 @@ namespace FS
 				{
 					it->TypeTimer = 0;
 					if (it->Reveal < static_cast<int>(fullLen))
+					{
 						++it->Reveal;
+						// ★ 与触发结果 11 完全一致：每个新字符揭示时播放【打字机音】
+						//   [RulesClass+0x6C4] = MessageCharTyped = TextBleep
+						//   （各 mod 的 sound.ini 对应编号，音频 utext）——
+						//   这是事件 11 文本逐字出现时的"滴答"音（用户实测听感主体）。
+						//   运行时动态解析，任何 mod 通用。
+						if (RulesClass::Instance)
+						{
+							const int bleep = *(const int*)(
+								reinterpret_cast<const char*>(RulesClass::Instance) + 0x6C4);
+							VocClass::PlayGlobal(bleep, 0x2000, 1.0f);
+						}
+					}
 				}
 
 				// 2) 解析三种括号分段：每段 = (颜色种类, 起始指针, 长度) —— 基于【完整文本】
@@ -301,13 +315,17 @@ namespace FS
 
 				// 3b) 黑底宽度：各段【完整长度】宽度之和（段不含括号 → 黑底不含
 				//     括号占位），打字机期间黑底保持此完整宽度
+				// ★ 测量 marginX 必须为 0：GetTextDimensions(0x4A59E0) 是"tooltip
+				//   文本框测量"，marginX=2 会给宽度加左右各 2px，而 DrawText
+				//   （Fancy_Text_Print_Wide NoShadow）绘制无此边距 → x 多推进
+				//   4px，每段之间出现空位（"括号括住的文字两边有空位"即此因）。
 				int totalW = 0;
-				RectangleStruct dimFull = Drawing::GetTextDimensions(wtext, { 0, 0 }, 0, 2, 0);
+				RectangleStruct dimFull = Drawing::GetTextDimensions(wtext, { 0, 0 }, 0, 0, 0);
 				for (int i = 0; i < nSegs; ++i)
 				{
 					wchar_t tmp[0x100] = { 0 };
 					wcsncpy(tmp, segs[i].p, segs[i].len);
-					RectangleStruct dim = Drawing::GetTextDimensions(tmp, { 0, 0 }, 0, 2, 0);
+					RectangleStruct dim = Drawing::GetTextDimensions(tmp, { 0, 0 }, 0, 0, 0);
 					totalW += dim.Width;
 				}
 
@@ -334,7 +352,7 @@ namespace FS
 						vis = segs[i].len;            // 该段已全部揭示
 					wchar_t tmp[0x100] = { 0 };
 					wcsncpy(tmp, segs[i].p, vis);
-					RectangleStruct dim = Drawing::GetTextDimensions(tmp, { 0, 0 }, 0, 2, 0);
+					RectangleStruct dim = Drawing::GetTextDimensions(tmp, { 0, 0 }, 0, 0, 0);
 					const ColorStruct& c = GetTextColor(segs[i].colorKind, *it);
 					// ★ YR DrawText 的 COLORREF 是固定 16 位 RGB565
 					//   （YRpp COLOR_RED=0xF800、COLOR_WHITE=0xFFFF 佐证）。
